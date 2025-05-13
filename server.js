@@ -1,6 +1,7 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
 const bodyParser = require('body-parser');
+const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -8,8 +9,22 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
 
+  // Check for system-installed Chromium path
+  const possiblePaths = [
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium',
+    '/usr/bin/google-chrome-stable'
+  ];
+  const chromiumPath = possiblePaths.find(p => fs.existsSync(p));
+
+  if (!chromiumPath) {
+    console.error('No Chromium binary found.');
+    return res.status(500).json({ error: 'No Chromium binary found' });
+  }
+
   const browser = await puppeteer.launch({
     headless: true,
+    executablePath: chromiumPath,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
