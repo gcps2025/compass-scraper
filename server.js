@@ -1,5 +1,5 @@
 const express = require('express');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -7,11 +7,9 @@ app.use(bodyParser.json({ limit: '10mb' }));
 
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
-  const chromiumPath = '/usr/bin/chromium-browser';
 
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: chromiumPath,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
