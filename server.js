@@ -1,7 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer-core');
+const puppeteer = require('puppeteer');
 const bodyParser = require('body-parser');
-const fs = require('fs');
 
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -9,16 +8,8 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
 
-  const chromiumPath = '/usr/bin/google-chrome';
-
-  if (!fs.existsSync(chromiumPath)) {
-    console.error('Google Chrome binary not found at /usr/bin/google-chrome.');
-    return res.status(500).json({ error: 'Google Chrome binary not found' });
-  }
-
   const browser = await puppeteer.launch({
     headless: true,
-    executablePath: chromiumPath,
     args: ['--no-sandbox', '--disable-setuid-sandbox']
   });
 
