@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "puppeteer-install": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npm install puppeteer",
+    "postinstall": "npm run puppeteer-install"
   },
   "dependencies": {
     "express": "^4.18.2",
