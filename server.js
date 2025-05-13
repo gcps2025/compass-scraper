@@ -18,7 +18,10 @@ app.post('/scrape', async (req, res) => {
   for (const url of urls) {
     const page = await browser.newPage();
     try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
+
+      // Wait explicitly for __NEXT_DATA__ to load
+      await page.waitForSelector('#__NEXT_DATA__', { timeout: 10000 }).catch(() => null);
 
       const nextData = await page.evaluate(() => {
         const scriptTag = document.querySelector('#__NEXT_DATA__');
