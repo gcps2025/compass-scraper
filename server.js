@@ -9,17 +9,11 @@ app.use(bodyParser.json({ limit: '10mb' }));
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
 
-  // Check for system-installed Chromium path
-  const possiblePaths = [
-    '/usr/bin/chromium-browser',
-    '/usr/bin/chromium',
-    '/usr/bin/google-chrome-stable'
-  ];
-  const chromiumPath = possiblePaths.find(p => fs.existsSync(p));
+  const chromiumPath = '/usr/bin/google-chrome';
 
-  if (!chromiumPath) {
-    console.error('No Chromium binary found.');
-    return res.status(500).json({ error: 'No Chromium binary found' });
+  if (!fs.existsSync(chromiumPath)) {
+    console.error('Google Chrome binary not found at /usr/bin/google-chrome.');
+    return res.status(500).json({ error: 'Google Chrome binary not found' });
   }
 
   const browser = await puppeteer.launch({
