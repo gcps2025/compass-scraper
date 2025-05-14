@@ -19,42 +19,54 @@ app.post('/scrape', async (req, res) => {
     const page = await browser.newPage();
 
     try {
-      await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
 
-      // Wait for main agent-buy section to ensure correct scope
-      await page.waitForSelector('main#root.agent-buy', { timeout: 10000 });
+      const content = await page.content();
 
-      const data = await page.evaluate(() => {
-        const getSafe = (selector, attr = 'textContent') => {
-          const el = document.querySelector(selector);
-          if (!el) return null;
-          return attr === 'textContent' ? el.textContent.trim() : el.getAttribute(attr);
-        };
+      const extractBetween = (text, fromText, toText) => {
+        const fromIndex = text.indexOf(fromText);
+        if (fromIndex === -1) return null;
+        const toIndex = text.indexOf(toText, fromIndex + fromText.length);
+        if (toIndex === -1) return null;
+        return text.substring(fromIndex + fromText.length, toIndex);
+      };
 
-        const listingPhoto = getSafe('#media-gallery-hero-image', 'src');
+      const listingPhoto = extractBetween(content, 'id="media-gallery-hero-image" src="', '" srcSet=');
 
-        const root = document.querySelector('main#root.agent-buy');
-        if (!root) return { listingPhoto: listingPhoto || 'Not Found', agents: [] };
+      const agents = [];
+      let searchFrom = 0;
+      while (true) {
+        const agentStart = content.indexOf('<dt class="cx-react-keyValueList-key', searchFrom);
+        if (agentStart === -1) break;
 
-        const contactCards = Array.from(root.querySelectorAll('div[data-tn="listing-contact-card"]'));
-        const agents = contactCards.map(card => {
-          const link = card.querySelector('a.cx-textLink.cx-textLink--primary');
-          if (link) {
-            return {
-              name: link.textContent.trim(),
-              profileUrl: link.href
-            };
-          }
-          return null;
-        }).filter(agent => agent !== null);
+        const dtClose = content.indexOf('</dt>', agentStart);
+        const dtContent = content.substring(agentStart, dtClose);
+        if (!dtContent.includes('Agent')) {
+          searchFrom = dtClose;
+          continue;
+        }
 
-        return {
-          listingPhoto: listingPhoto || 'Not Found',
-          agents: agents.length ? agents : []
-        };
+        const ddStart = content.indexOf('<dd', dtClose);
+        const aStart = content.indexOf('<a class="cx-textLink cx-textLink--primary"', ddStart);
+        const hrefStart = content.indexOf('href="', aStart) + 6;
+        const hrefEnd = content.indexOf('"', hrefStart);
+        const nameStart = content.indexOf('>', hrefEnd) + 1;
+        const nameEnd = content.indexOf('</a>', nameStart);
+
+        if (aStart !== -1 && hrefStart !== -1 && hrefEnd !== -1 && nameStart !== -1 && nameEnd !== -1) {
+          const profileUrl = content.substring(hrefStart, hrefEnd);
+          const name = content.substring(nameStart, nameEnd).trim();
+          agents.push({ name, profileUrl: `https://www.compass.com${profileUrl}` });
+        }
+
+        searchFrom = nameEnd;
+      }
+
+      results.push({
+        url,
+        listingPhoto: listingPhoto || 'Not Found',
+        agents: agents.length ? agents : []
       });
-
-      results.push({ url, ...data });
 
     } catch (error) {
       results.push({ url, error: error.message });
