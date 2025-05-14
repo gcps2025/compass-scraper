@@ -21,28 +21,27 @@ app.post('/scrape', async (req, res) => {
     try {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-      const content = await page.content();
+      const data = await page.evaluate(() => {
+        const getSafe = (selector, attr = 'textContent') => {
+          const el = document.querySelector(selector);
+          if (!el) return null;
+          return attr === 'textContent' ? el.textContent.trim() : el.getAttribute(attr);
+        };
 
-      const extractBetween = (text, fromText, toText) => {
-        const fromIndex = text.indexOf(fromText);
-        if (fromIndex === -1) return null;
-        const toIndex = text.indexOf(toText, fromIndex + fromText.length);
-        if (toIndex === -1) return null;
-        return text.substring(fromIndex + fromText.length, toIndex);
-      };
+        const listingPhoto = getSafe('#media-gallery-hero-image', 'src');
+        const agentName = getSafe('[data-tn="profile-name"]');
+        const agentProfile = getSafe('.agents-heroTitle');
+        const profileImage = getSafe('.profile-image', 'src');
 
-      const listingPhoto = extractBetween(content, 'id="media-gallery-hero-image" src="', '" srcSet=');
-      const agentName = extractBetween(content, 'data-tn="profile-name">', '</h1>');
-      const agentHome = extractBetween(content, '<h1 class="textIntent-headline1--strong agents-heroTitle ">', '</h1>');
-      const profileImage = extractBetween(content, '"profile-image" src="', '" alt=');
-
-      results.push({
-        url,
-        listingPhoto: listingPhoto || 'Not Found',
-        agentName: agentName || 'Not Found',
-        agentHome: agentHome || 'Not Found',
-        profileImage: profileImage || 'Not Found'
+        return {
+          listingPhoto: listingPhoto || 'Not Found',
+          agentName: agentName || 'Not Found',
+          agentProfile: agentProfile || 'Not Found',
+          profileImage: profileImage || 'Not Found'
+        };
       });
+
+      results.push({ url, ...data });
 
     } catch (error) {
       results.push({ url, error: error.message });
