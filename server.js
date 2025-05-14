@@ -52,9 +52,27 @@ app.post('/scrape', async (req, res) => {
 
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-      await page.waitForTimeout(10000); // Increased wait to catch lazy GraphQL calls
+      // Simulate scrolling to bottom
+      await page.evaluate(async () => {
+        await new Promise((resolve) => {
+          let totalHeight = 0;
+          const distance = 100;
+          const timer = setInterval(() => {
+            const scrollHeight = document.body.scrollHeight;
+            window.scrollBy(0, distance);
+            totalHeight += distance;
 
-      results.push({ url, status: 'Logged GraphQL POST requests & responses' });
+            if (totalHeight >= scrollHeight) {
+              clearInterval(timer);
+              resolve();
+            }
+          }, 200);
+        });
+      });
+
+      await page.waitForTimeout(10000); // Extended wait after scroll
+
+      results.push({ url, status: 'Scrolled & logged GraphQL POST requests & responses' });
 
     } catch (error) {
       results.push({ url, error: error.message });
