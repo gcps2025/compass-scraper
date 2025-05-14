@@ -29,15 +29,16 @@ app.post('/scrape', async (req, res) => {
         };
 
         const listingPhoto = getSafe('#media-gallery-hero-image', 'src');
-        const agentName = getSafe('[data-tn="profile-name"]');
-        const agentProfile = getSafe('.agents-heroTitle');
-        const profileImage = getSafe('.profile-image', 'src');
+
+        const agentLinks = Array.from(document.querySelectorAll('.cx-textLink.cx-textLink--primary'));
+        const agents = agentLinks.map(link => ({
+          name: link.textContent.trim(),
+          profileUrl: link.getAttribute('href')
+        }));
 
         return {
           listingPhoto: listingPhoto || 'Not Found',
-          agentName: agentName || 'Not Found',
-          agentProfile: agentProfile || 'Not Found',
-          profileImage: profileImage || 'Not Found'
+          agents: agents.length ? agents : 'Not Found'
         };
       });
 
