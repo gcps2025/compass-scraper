@@ -21,7 +21,12 @@ app.post('/scrape', async (req, res) => {
     try {
       await page.setRequestInterception(true);
 
-      page.on('request', (interceptedRequest) => {
+      page.on('request', async (interceptedRequest) => {
+        if (interceptedRequest.method() === 'POST') {
+          const postData = interceptedRequest.postData();
+          console.log('POST Request URL:', interceptedRequest.url());
+          console.log('POST Body:', postData ? postData.substring(0, 1000) : 'No body');
+        }
         interceptedRequest.continue();
       });
 
@@ -33,7 +38,7 @@ app.post('/scrape', async (req, res) => {
           const resourceType = response.request().resourceType();
 
           if (resourceType === 'xhr' || resourceType === 'fetch') {
-            console.log('Intercepted:', method, requestUrl, 'Status:', status);
+            console.log('Intercepted Response:', method, requestUrl, 'Status:', status);
 
             const contentType = response.headers()['content-type'] || '';
             if (contentType.includes('application/json')) {
@@ -50,7 +55,7 @@ app.post('/scrape', async (req, res) => {
 
       await page.waitForTimeout(5000); // Allow network requests to settle
 
-      results.push({ url, status: 'Logged POST & GraphQL requests' });
+      results.push({ url, status: 'Logged POST request bodies' });
 
     } catch (error) {
       results.push({ url, error: error.message });
