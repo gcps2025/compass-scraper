@@ -28,10 +28,15 @@ app.post('/scrape', async (req, res) => {
       page.on('response', async (response) => {
         try {
           const requestUrl = response.url();
-          if (requestUrl.includes('/api/')) {
-            console.log('Intercepted API URL:', requestUrl);
-            const json = await response.json();
-            console.log('API Response Body Sample:', JSON.stringify(json).substring(0, 500));
+          const status = response.status();
+          const resourceType = response.request().resourceType();
+          if (resourceType === 'xhr' || resourceType === 'fetch') {
+            console.log('Intercepted:', requestUrl, 'Status:', status);
+            const contentType = response.headers()['content-type'] || '';
+            if (contentType.includes('application/json')) {
+              const json = await response.json();
+              console.log('Response Body Sample:', JSON.stringify(json).substring(0, 500));
+            }
           }
         } catch (e) {
           console.error('Response handling error:', e.message);
@@ -40,9 +45,9 @@ app.post('/scrape', async (req, res) => {
 
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-      await page.waitForTimeout(5000); // Allow XHRs to complete
+      await page.waitForTimeout(5000); // Allow network requests to settle
 
-      results.push({ url, status: 'Logged API requests' });
+      results.push({ url, status: 'Logged all XHR & fetch requests' });
 
     } catch (error) {
       results.push({ url, error: error.message });
