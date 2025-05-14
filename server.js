@@ -21,8 +21,8 @@ app.post('/scrape', async (req, res) => {
     try {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-      // Wait for the agent contact card section to load
-      await page.waitForSelector('div[data-tn="listing-contact-card"]', { timeout: 10000 });
+      // Wait for main agent-buy section to ensure correct scope
+      await page.waitForSelector('main#root.agent-buy', { timeout: 10000 });
 
       const data = await page.evaluate(() => {
         const getSafe = (selector, attr = 'textContent') => {
@@ -33,7 +33,10 @@ app.post('/scrape', async (req, res) => {
 
         const listingPhoto = getSafe('#media-gallery-hero-image', 'src');
 
-        const contactCards = Array.from(document.querySelectorAll('div[data-tn="listing-contact-card"]'));
+        const root = document.querySelector('main#root.agent-buy');
+        if (!root) return { listingPhoto: listingPhoto || 'Not Found', agents: [] };
+
+        const contactCards = Array.from(root.querySelectorAll('div[data-tn="listing-contact-card"]'));
         const agents = contactCards.map(card => {
           const link = card.querySelector('a.cx-textLink.cx-textLink--primary');
           if (link) {
