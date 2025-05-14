@@ -17,35 +17,39 @@ app.post('/scrape', async (req, res) => {
 
   for (const url of urls) {
     const page = await browser.newPage();
+    let listingData = null;
+
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
+      await page.setRequestInterception(true);
 
-      // Wait explicitly for __NEXT_DATA__ to load
-      await page.waitForSelector('#__NEXT_DATA__', { timeout: 10000 }).catch(() => null);
-
-      const nextData = await page.evaluate(() => {
-        const scriptTag = document.querySelector('#__NEXT_DATA__');
-        if (scriptTag) {
-          return JSON.parse(scriptTag.textContent);
-        }
-        return null;
+      page.on('request', (interceptedRequest) => {
+        interceptedRequest.continue();
       });
 
-      if (!nextData) {
-        results.push({ url, error: '__NEXT_DATA__ not found' });
+      page.on('response', async (response) => {
+        try {
+          const requestUrl = response.url();
+          if (requestUrl.includes('/api/v3/listing/')) {
+            const json = await response.json();
+            listingData = json.listing || null;
+          }
+        } catch (e) {
+          console.error('Response handling error:', e.message);
+        }
+      });
+
+      await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+
+      await page.waitForTimeout(5000); // allow XHR to complete
+
+      if (!listingData) {
+        results.push({ url, error: 'Listing data not found in intercepted API' });
         continue;
       }
 
-      const listing = nextData?.props?.pageProps?.listing;
+      const heroImage = listingData.media?.hero?.url || 'Not Found';
 
-      if (!listing) {
-        results.push({ url, error: 'Listing data not found' });
-        continue;
-      }
-
-      const heroImage = listing.media?.hero?.url || 'Not Found';
-
-      const agents = listing.primaryListingAgents.map(agent => ({
+      const agents = listingData.primaryListingAgents.map(agent => ({
         name: agent.fullName,
         profileUrl: `https://www.compass.com/agents/${agent.slug}`,
         profileImage: agent.profileImageUrl || 'No Image'
