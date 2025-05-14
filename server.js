@@ -29,9 +29,10 @@ app.post('/scrape', async (req, res) => {
       page.on('response', async (response) => {
         try {
           const requestUrl = response.url();
-          if (requestUrl.includes('/api/v3/listing/')) {
+          if (requestUrl.includes('/api/') && requestUrl.includes('listing')) {
+            console.log('Intercepted:', requestUrl);
             const json = await response.json();
-            listingData = json.listing || null;
+            listingData = json.listing || json.data?.listing || json || null;
           }
         } catch (e) {
           console.error('Response handling error:', e.message);
@@ -40,7 +41,7 @@ app.post('/scrape', async (req, res) => {
 
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-      await page.waitForTimeout(5000); // allow XHR to complete
+      await page.waitForTimeout(5000); // Allow XHRs to complete
 
       if (!listingData) {
         results.push({ url, error: 'Listing data not found in intercepted API' });
