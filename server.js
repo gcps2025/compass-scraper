@@ -21,6 +21,9 @@ app.post('/scrape', async (req, res) => {
     try {
       await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
+      // Wait for the agent contact card section to load
+      await page.waitForSelector('div[data-tn="listing-contact-card"]', { timeout: 10000 });
+
       const data = await page.evaluate(() => {
         const getSafe = (selector, attr = 'textContent') => {
           const el = document.querySelector(selector);
@@ -44,7 +47,7 @@ app.post('/scrape', async (req, res) => {
 
         return {
           listingPhoto: listingPhoto || 'Not Found',
-          agents: agents.length ? agents : 'Not Found'
+          agents: agents.length ? agents : []
         };
       });
 
