@@ -30,11 +30,17 @@ app.post('/scrape', async (req, res) => {
 
         const listingPhoto = getSafe('#media-gallery-hero-image', 'src');
 
-        const agentLinks = Array.from(document.querySelectorAll('.cx-textLink.cx-textLink--primary'));
-        const agents = agentLinks.map(link => ({
-          name: link.textContent.trim(),
-          profileUrl: link.getAttribute('href')
-        }));
+        const contactCards = Array.from(document.querySelectorAll('div[data-tn="listing-contact-card"]'));
+        const agents = contactCards.map(card => {
+          const link = card.querySelector('a.cx-textLink.cx-textLink--primary');
+          if (link) {
+            return {
+              name: link.textContent.trim(),
+              profileUrl: link.href
+            };
+          }
+          return null;
+        }).filter(agent => agent !== null);
 
         return {
           listingPhoto: listingPhoto || 'Not Found',
