@@ -17,7 +17,6 @@ app.post('/scrape', async (req, res) => {
 
   for (const url of urls) {
     const page = await browser.newPage();
-    let listingData = null;
 
     try {
       await page.setRequestInterception(true);
@@ -29,10 +28,10 @@ app.post('/scrape', async (req, res) => {
       page.on('response', async (response) => {
         try {
           const requestUrl = response.url();
-          if (requestUrl.includes('/api/') && requestUrl.includes('listing')) {
-            console.log('Intercepted:', requestUrl);
+          if (requestUrl.includes('/api/')) {
+            console.log('Intercepted API URL:', requestUrl);
             const json = await response.json();
-            listingData = json.listing || json.data?.listing || json || null;
+            console.log('API Response Body Sample:', JSON.stringify(json).substring(0, 500));
           }
         } catch (e) {
           console.error('Response handling error:', e.message);
@@ -43,24 +42,7 @@ app.post('/scrape', async (req, res) => {
 
       await page.waitForTimeout(5000); // Allow XHRs to complete
 
-      if (!listingData) {
-        results.push({ url, error: 'Listing data not found in intercepted API' });
-        continue;
-      }
-
-      const heroImage = listingData.media?.hero?.url || 'Not Found';
-
-      const agents = listingData.primaryListingAgents.map(agent => ({
-        name: agent.fullName,
-        profileUrl: `https://www.compass.com/agents/${agent.slug}`,
-        profileImage: agent.profileImageUrl || 'No Image'
-      }));
-
-      results.push({
-        url,
-        listingPhoto: heroImage,
-        agents
-      });
+      results.push({ url, status: 'Logged API requests' });
 
     } catch (error) {
       results.push({ url, error: error.message });
