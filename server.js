@@ -1,35 +1,26 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
+const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
 
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
 
+const extractBetween = (text, fromText, toText) => {
+  const fromIndex = text.indexOf(fromText);
+  if (fromIndex === -1) return null;
+  const toIndex = text.indexOf(toText, fromIndex + fromText.length);
+  if (toIndex === -1) return null;
+  return text.substring(fromIndex + fromText.length, toIndex);
+};
+
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
-
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  });
-
   const results = [];
 
   for (const url of urls) {
-    const page = await browser.newPage();
-
     try {
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 0 });
-
-      const content = await page.content();
-
-      const extractBetween = (text, fromText, toText) => {
-        const fromIndex = text.indexOf(fromText);
-        if (fromIndex === -1) return null;
-        const toIndex = text.indexOf(toText, fromIndex + fromText.length);
-        if (toIndex === -1) return null;
-        return text.substring(fromIndex + fromText.length, toIndex);
-      };
+      const response = await fetch(url);
+      const content = await response.text();
 
       const listingPhoto = extractBetween(content, 'id="media-gallery-hero-image" src="', '" srcSet=');
 
@@ -70,12 +61,9 @@ app.post('/scrape', async (req, res) => {
 
     } catch (error) {
       results.push({ url, error: error.message });
-    } finally {
-      await page.close();
     }
   }
 
-  await browser.close();
   res.json({ data: results });
 });
 
