@@ -15,8 +15,6 @@ const extractBetween = (text, fromText, toText) => {
 
 const dedupe = (arr) => [...new Set(arr)];
 
-const encodeApostrophes = (str) => str.replace(/'/g, '&#x27;');
-
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
   const results = [];
@@ -50,7 +48,7 @@ app.post('/scrape', async (req, res) => {
 
       const uniqueAgents = dedupe(agents);
 
-      // Fetch each profile URL and extract agent name
+      // Fetch each profile URL and extract agent name (leave apostrophes as-is)
       const agentData = [];
       for (const slug of uniqueAgents) {
         const profileUrl = `https://www.compass.com/agents/${slug}/`;
@@ -60,8 +58,7 @@ app.post('/scrape', async (req, res) => {
 
           const agentName = extractBetween(profileHtml, 'data-tn="profile-name">', '</h1>');
           if (agentName) {
-            const encodedName = encodeApostrophes(agentName.trim());
-            agentData.push({ name: encodedName, profileUrl });
+            agentData.push({ name: agentName.trim(), profileUrl });
           }
         } catch (e) {
           agentData.push({ profileUrl, error: e.message });
