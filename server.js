@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch');
 const bodyParser = require('body-parser');
+const he = require('he');
 
 const app = express();
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -48,7 +49,7 @@ app.post('/scrape', async (req, res) => {
 
       const uniqueAgents = dedupe(agents);
 
-      // Fetch each profile URL and extract agent name (leave apostrophes as-is)
+      // Fetch each profile URL and extract agent name, decode HTML entities
       const agentData = [];
       for (const slug of uniqueAgents) {
         const profileUrl = `https://www.compass.com/agents/${slug}/`;
@@ -56,9 +57,10 @@ app.post('/scrape', async (req, res) => {
           const profileRes = await fetch(profileUrl);
           const profileHtml = await profileRes.text();
 
-          const agentName = extractBetween(profileHtml, 'data-tn="profile-name">', '</h1>');
-          if (agentName) {
-            agentData.push({ name: agentName.trim(), profileUrl });
+          const agentNameRaw = extractBetween(profileHtml, 'data-tn="profile-name">', '</h1>');
+          if (agentNameRaw) {
+            const decodedName = he.decode(agentNameRaw.trim());
+            agentData.push({ name: decodedName, profileUrl });
           }
         } catch (e) {
           agentData.push({ profileUrl, error: e.message });
