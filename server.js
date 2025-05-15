@@ -27,30 +27,24 @@ app.post('/scrape', async (req, res) => {
       const agents = [];
       let searchFrom = 0;
       while (true) {
-        const agentStart = content.indexOf('<dt class="cx-react-keyValueList-key', searchFrom);
-        if (agentStart === -1) break;
+        const cardStart = content.indexOf('<div data-tn="listing-contact-card"', searchFrom);
+        if (cardStart === -1) break;
 
-        const dtClose = content.indexOf('</dt>', agentStart);
-        const dtContent = content.substring(agentStart, dtClose);
-        if (!dtContent.includes('Agent')) {
-          searchFrom = dtClose;
-          continue;
-        }
+        const cardEnd = content.indexOf('</div>', cardStart);
+        const cardContent = content.substring(cardStart, cardEnd);
 
-        const ddStart = content.indexOf('<dd', dtClose);
-        const aStart = content.indexOf('<a class="cx-textLink cx-textLink--primary"', ddStart);
-        const hrefStart = content.indexOf('href="', aStart) + 6;
-        const hrefEnd = content.indexOf('"', hrefStart);
-        const nameStart = content.indexOf('>', hrefEnd) + 1;
-        const nameEnd = content.indexOf('</a>', nameStart);
+        const hrefStart = cardContent.indexOf('href="') + 6;
+        const hrefEnd = cardContent.indexOf('"', hrefStart);
+        const nameStart = cardContent.indexOf('>', hrefEnd) + 1;
+        const nameEnd = cardContent.indexOf('</a>', nameStart);
 
-        if (aStart !== -1 && hrefStart !== -1 && hrefEnd !== -1 && nameStart !== -1 && nameEnd !== -1) {
-          const profileUrl = content.substring(hrefStart, hrefEnd);
-          const name = content.substring(nameStart, nameEnd).trim();
+        if (hrefStart !== -1 && hrefEnd !== -1 && nameStart !== -1 && nameEnd !== -1) {
+          const profileUrl = cardContent.substring(hrefStart, hrefEnd);
+          const name = cardContent.substring(nameStart, nameEnd).trim();
           agents.push({ name, profileUrl: `https://www.compass.com${profileUrl}` });
         }
 
-        searchFrom = nameEnd;
+        searchFrom = cardEnd;
       }
 
       results.push({
