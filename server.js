@@ -13,6 +13,8 @@ const extractBetween = (text, fromText, toText) => {
   return text.substring(fromIndex + fromText.length, toIndex);
 };
 
+const dedupe = (arr) => [...new Set(arr)];
+
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
   const results = [];
@@ -20,37 +22,49 @@ app.post('/scrape', async (req, res) => {
   for (const url of urls) {
     try {
       const response = await fetch(url);
-      const content = await response.text();
+      const html = await response.text();
 
-      const listingPhoto = extractBetween(content, 'id="media-gallery-hero-image" src="', '" srcSet=');
-
+      // Extract agent profile slugs
+      const fromText = '" href="/agents/';
+      const toText = '/" data-tn';
       const agents = [];
       let searchFrom = 0;
-      while (true) {
-        const cardStart = content.indexOf('<div data-tn="listing-contact-card"', searchFrom);
-        if (cardStart === -1) break;
 
-        const cardEnd = content.indexOf('</div>', cardStart);
-        const cardContent = content.substring(cardStart, cardEnd);
+      for (let a = 0; a < 10; a++) {
+        const start1 = html.indexOf(fromText, searchFrom);
+        if (start1 === -1) break;
 
-        const hrefStart = cardContent.indexOf('href="') + 6;
-        const hrefEnd = cardContent.indexOf('"', hrefStart);
-        const nameStart = cardContent.indexOf('>', hrefEnd) + 1;
-        const nameEnd = cardContent.indexOf('</a>', nameStart);
+        const end1 = html.indexOf(toText, start1);
+        if (end1 === -1) break;
 
-        if (hrefStart !== -1 && hrefEnd !== -1 && nameStart !== -1 && nameEnd !== -1) {
-          const profileUrl = cardContent.substring(hrefStart, hrefEnd);
-          const name = cardContent.substring(nameStart, nameEnd).trim();
-          agents.push({ name, profileUrl: `https://www.compass.com${profileUrl}` });
+        const slug = html.substring(start1 + fromText.length, end1).replace(/&#x27;/g, "'");
+        agents.push(slug);
+
+        searchFrom = end1 + 1;
+      }
+
+      const uniqueAgents = dedupe(agents);
+
+      // Now fetch each profile URL and extract agent name
+      const agentData = [];
+      for (const slug of uniqueAgents) {
+        const profileUrl = `https://www.compass.com/agents/${slug}/`;
+        try {
+          const profileRes = await fetch(profileUrl);
+          const profileHtml = await profileRes.text();
+
+          const agentName = extractBetween(profileHtml, 'data-tn="profile-name">', '</h1>');
+          if (agentName) {
+            agentData.push({ name: agentName.trim(), profileUrl });
+          }
+        } catch (e) {
+          agentData.push({ profileUrl, error: e.message });
         }
-
-        searchFrom = cardEnd;
       }
 
       results.push({
         url,
-        listingPhoto: listingPhoto || 'Not Found',
-        agents: agents.length ? agents : []
+        agents: agentData.length ? agentData : []
       });
 
     } catch (error) {
