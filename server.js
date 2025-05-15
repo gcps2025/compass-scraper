@@ -24,6 +24,9 @@ app.post('/scrape', async (req, res) => {
       const response = await fetch(url);
       const html = await response.text();
 
+      // Extract listing photo
+      const listingPhoto = extractBetween(html, 'id="media-gallery-hero-image" src="', '" srcSet=');
+
       // Extract agent profile slugs
       const fromText = '" href="/agents/';
       const toText = '/" data-tn';
@@ -45,7 +48,7 @@ app.post('/scrape', async (req, res) => {
 
       const uniqueAgents = dedupe(agents);
 
-      // Now fetch each profile URL and extract agent name
+      // Fetch each profile URL and extract agent name
       const agentData = [];
       for (const slug of uniqueAgents) {
         const profileUrl = `https://www.compass.com/agents/${slug}/`;
@@ -64,6 +67,7 @@ app.post('/scrape', async (req, res) => {
 
       results.push({
         url,
+        listingPhoto: listingPhoto || 'Not Found',
         agents: agentData.length ? agentData : []
       });
 
