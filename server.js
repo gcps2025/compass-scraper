@@ -15,6 +15,8 @@ const extractBetween = (text, fromText, toText) => {
 
 const dedupe = (arr) => [...new Set(arr)];
 
+const encodeApostrophes = (str) => str.replace(/'/g, '&#x27;');
+
 app.post('/scrape', async (req, res) => {
   const urls = req.body.urls || [];
   const results = [];
@@ -58,7 +60,8 @@ app.post('/scrape', async (req, res) => {
 
           const agentName = extractBetween(profileHtml, 'data-tn="profile-name">', '</h1>');
           if (agentName) {
-            agentData.push({ name: agentName.trim(), profileUrl });
+            const encodedName = encodeApostrophes(agentName.trim());
+            agentData.push({ name: encodedName, profileUrl });
           }
         } catch (e) {
           agentData.push({ profileUrl, error: e.message });
